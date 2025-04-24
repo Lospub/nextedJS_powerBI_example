@@ -1,33 +1,127 @@
-# nextedJS_powerBI_example
+# Power BI Embedded in Next.js Example
 
-This is the repo to show the skill to embed PowerBi to a simple nextJS application. 
+This repository demonstrates how to embed a Power BI report into a simple **Next.js** application using **Azure Active Directory (Azure AD)** and the **Power BI REST API**.
 
-## Preprocess
+---
 
-power bi ==> admin portal ==> tenant setting ==> developer setting ==> Developer settings ==> Enabled Service principals can use Fabric APIs
-             ==> Specific security groups (better to choose)
-         ==> add AAD app to workspace
-         ==> workspace(group) ==> report ID (can be find in embaded url)
-Azure AD ==> go to Microsoft Entra ID ==> create app ==> set permission ==> create certification & secrets ==> add owner?
-                                      ==> groups ==> add security group ==》 add application member
-securty group in AAD and PBI should be the same one
+## 🔧 Prerequisites and Setup
 
-get token:
-step 1 get bearer token: 
-API：       POST https://login.microsoftonline.com/{tantent ID？}/oauth2/v2.0/token
-       body： grant_type	    client_credentials	                                Defines the grant type, which is set to client_credentials for this type of request.
-              client_id	    <your_client_id>	                                The client ID associated with your Azure AD application.
-              client_secret	<your_client_secret>	                            The client secret generated for the Azure AD application.
-              scope	        https://analysis.windows.net/powerbi/api/.default	Specifies the API scope required for Power BI API access.
-     get token in return message
-step 2 get access token:
-API:        POST https://api.powerbi.com/v1.0/myorg/groups/{groupId}/reports/{reportId}/GenerateToken
-       body:  
-             accessLevel	        TokenAccessLevel         The required access level for embed token generation
-             allowSaveAs          boolean                  Whether an embedded report can be saved as a new report. The default value is false. Only applies when you generate an embed token for report embedding.
-             datasetId            string                   The dataset ID used for report creation. Only applies when you generate an embed token for report creation.
-             identities	        EffectiveIdentity[]      A list of identities to use for row-level security rules
-             lifetimeInMinutes	integer                  The maximum lifetime of the token in minutes, starting from the time it was generated. Can be used to shorten the expiration time of a token, but not to extend it. The value must be a positive integer. Zero (0) is equivalent to null and will be ignored, resulting in the default expiration time.
-     get embaded access token we need
+### 1. Power BI Configuration
 
-embaded to React
+#### ✅ Admin Portal (Tenant Settings)
+
+- Navigate to **Power BI Admin Portal** → **Tenant Settings**
+- Enable:
+  - ✅ *Allow service principals to use Fabric APIs*
+  - ✅ Restrict access to specific **security groups** (recommended)
+
+#### ✅ Workspace Configuration
+
+- Add your **Azure AD app** (service principal) to the **Power BI workspace**
+- Locate the **workspace (group) ID** and **report ID** from the **embed URL**
+
+---
+
+### 2. Azure AD Configuration
+
+#### ✅ App Registration
+
+- Go to **Microsoft Entra ID (Azure AD)** → **App registrations**
+- Register a new app
+- Configure API permissions:
+  - Add delegated permission for `Power BI Service`
+  - Consent to the permission
+- Generate a **Client Secret**
+- (Optional) Add yourself as an **Owner**
+
+#### ✅ Security Groups (AAD)
+
+- Create a **Security Group**
+- Add:
+  - Your **Azure AD app** as a **member**
+  - Any relevant **admin users**
+
+> 💡 The **same security group** must be used in both **Azure AD** and **Power BI**.
+
+---
+
+## 🔐 Authentication Flow
+
+### Step 1: Get Bearer Token (Azure AD)
+
+**Endpoint:**
+
+```
+POST https://login.microsoftonline.com/{TENANT_ID}/oauth2/v2.0/token
+```
+
+**Request Body (x-www-form-urlencoded):**
+
+| Key             | Value                                                              |
+|------------------|--------------------------------------------------------------------|
+| `grant_type`     | `client_credentials`                                               |
+| `client_id`      | `<your_client_id>`                                                 |
+| `client_secret`  | `<your_client_secret>`                                             |
+| `scope`          | `https://analysis.windows.net/powerbi/api/.default`               |
+
+**Response:**
+
+- You will receive a **Bearer Token**
+
+---
+
+### Step 2: Get Power BI Embed Token
+
+**Endpoint:**
+
+```
+POST https://api.powerbi.com/v1.0/myorg/groups/{groupId}/reports/{reportId}/GenerateToken
+```
+
+> **Note:** At minimum, `accessLevel` and `allowSaveAs` are required. Additional options like `datasetId`, `identities`, and `lifetimeInMinutes` are optional depending on your use case.
+
+**Request Body (JSON):**
+
+```json
+{
+  "accessLevel": "View",                      // [Required] Access level for embedding (e.g., View, Edit)
+  "allowSaveAs": true,                        // [Required] Allows saving embedded report as a new one
+  "datasetId": "<optional_dataset_id>",      // [Optional] For report creation scenarios
+  "identities": [                             // [Optional] Row-level security rules
+    {
+      "username": "<user@example.com>",
+      "roles": ["<role>"]
+    }
+  ],
+  "lifetimeInMinutes": 60                    // [Optional] Token validity duration in minutes
+}
+```
+
+**Response:**
+
+- Returns an **Embed Token** needed for embedding the report
+
+---
+
+## 🧹 Embedding in React
+
+Once you have the **embed token**, you can use it in the frontend with libraries such as:
+
+- [`powerbi-client-react`](https://www.npmjs.com/package/powerbi-client-react)
+- Or embed manually using `<iframe>` or Power BI JS SDK
+
+---
+
+## 🗂️ Environment Variables
+
+Store secrets in `.env.local`:
+
+```env
+AZURE_TENANT_ID=your-tenant-id
+AZURE_CLIENT_ID=your-client-id
+AZURE_CLIENT_SECRET=your-client-secret
+POWERBI_WORKSPACE_ID=your-workspace-id
+POWERBI_REPORT_ID=your-report-id
+```
+
+---
