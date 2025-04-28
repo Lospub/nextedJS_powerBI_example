@@ -4,7 +4,7 @@ This repository demonstrates how to embed a Power BI report into a simple **Next
 
 ---
 
-## 🔧 Prerequisites and Setup
+## 🔧 Prerequisites and Embedded Setup
 
 ### 1. Power BI Configuration
 
